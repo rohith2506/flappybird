@@ -1,3 +1,9 @@
+'''
+Implementation of flappy bird using pygame
+
+@Author: Rohith Uppala
+'''
+
 import pygame
 import os
 import time
@@ -5,6 +11,10 @@ import random
 import pdb
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 500, 800
+BIRD_POSITION = (230, 350)
+BASE_POSITION = 730
+PIPE_POSITION = 600
+
 pygame.font.init()
 
 BIRD_IMAGES = []
@@ -15,7 +25,8 @@ PIPE_IMAGE = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "pi
 BASE_IMAGE = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "base.png")))
 BACKGROUND_IMAGE = pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bg.png")))
 
-STAT_FONT = pygame.font.SysFont("comicsans", 50)
+SCORE_FONT = pygame.font.SysFont("timesnewromanboldttf", 30)
+GAMEOVER_FONT = pygame.font.SysFont("comicsans", 60)
 
 
 class Bird:
@@ -39,6 +50,7 @@ class Bird:
 
     def move(self):
         self.tick_count += 1
+        # s = ut + 1/2a*t^^2
         d = self.vel * self.tick_count + 1.5 * self.tick_count ** 2
         if d >= 16: d = 16
         if d < 0: d -= 2
@@ -70,6 +82,7 @@ class Bird:
             self.img = BIRD_IMAGES[1]
             self.img_count = self.animation_time * 2
 
+        # Flipping the image inverse
         rotated_image = pygame.transform.rotate(self.img, self.tilt)
         new_rect = rotated_image.get_rect(center=self.img.get_rect(topleft=(self.x, self.y)).center)
         win.blit(rotated_image, new_rect.topleft)
@@ -79,8 +92,7 @@ class Bird:
 
 
 class Pipe:
-    def __init__(self, x):
-        self.gap = 400
+    def __init__(self, x, gap):
         self.vel = 5
         self.x = x
         self.height = 0
@@ -89,12 +101,12 @@ class Pipe:
         self.PIPE_TOP = pygame.transform.flip(PIPE_IMAGE, False, True)
         self.PIPE_BOTTOM = PIPE_IMAGE
         self.passed = False
-        self.set_height()
+        self.set_height(gap)
 
-    def set_height(self):
+    def set_height(self, gap):
         self.height = random.randrange(50, 450)
         self.top = self.height - self.PIPE_TOP.get_height()
-        self.bottom = self.height + self.gap
+        self.bottom = self.height + gap
 
     def move(self):
         self.x = self.x - self.vel
@@ -103,6 +115,7 @@ class Pipe:
         win.blit(self.PIPE_TOP, (self.x, self.top))
         win.blit(self.PIPE_BOTTOM, (self.x, self.bottom))
 
+    # pixel perfect collision using pygame
     def collide(self, bird, win):
         bird_mask = bird.get_mask()
         top_mask = pygame.mask.from_surface(self.PIPE_TOP)
@@ -140,38 +153,54 @@ class Base:
         win.blit(self.img, (self.x2, self.y))
 
 
+def renderGameOverScreen(win, clock):
+    win.blit(BACKGROUND_IMAGE, (0, 0))
+    text = GAMEOVER_FONT.render("GAME OVER", 1, (255, 255, 255))
+    win.blit(text, (WINDOW_WIDTH / 3 - 35, WINDOW_HEIGHT * 3 / 8 ))
+    pygame.display.update()
+    done = False
+    while not done:
+        clock.tick(30)
+        for event in pygame.event.get():
+            pass
+        time.sleep(1)
+        done = True
+
 def draw_window(win, bird, pipes, base, score):
     win.blit(BACKGROUND_IMAGE, (0, 0))
     for pipe in pipes:
         pipe.draw(win)
-    text = STAT_FONT.render("Score: " + str(score), 1, (255, 255, 255))
+    text = SCORE_FONT.render("score: " + str(score) + "  level: " + str(int(score / 5)), 1, (255, 255, 255))
     win.blit(text, (WINDOW_WIDTH - 10 - text.get_width(), 10))
     base.draw(win)
     bird.draw(win)
     pygame.display.update()
 
 def main():
-    bird = Bird(230, 350)
-    base = Base(730)
-    pipes =  [Pipe(600)]
+    bird = Bird(BIRD_POSITION[0], BIRD_POSITION[1])
+    base = Base(BASE_POSITION)
+
+    initial_gap = 300
+    pipes =  [Pipe(PIPE_POSITION, initial_gap)]
 
     win = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     clock = pygame.time.Clock()
-    run = True
+    isGameOver = False
+
     score = 0
-    while run:
+    while not isGameOver:
         clock.tick(30)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     bird.jump()
             if event.type == pygame.QUIT:
-                run = False
+                isGameOver = True
         bird.move()
         rem, add_pipe = [], False
         for pipe in pipes:
             if pipe.collide(bird, win):
-                run = False
+                isGameOver = True
                 break
 
             if pipe.x + pipe.PIPE_TOP.get_width() < 0:
@@ -184,16 +213,23 @@ def main():
 
         if add_pipe:
             score += 1
-            pipes.append(Pipe(600))
+            gap = initial_gap - (int(score / 5) * 25)
+            if gap <= 200:
+                gap = random.randrange(180, 250)
+            pipes.append(Pipe(PIPE_POSITION, gap))
 
         for r in rem:
             pipes.remove(r)
 
         if bird.y + bird.img.get_height() >= 730:
-            run = False
+            isGameOver = True
 
         base.move()
         draw_window(win, bird, pipes, base, score)
+
+        if isGameOver:
+            renderGameOverScreen(win, clock)
+
     pygame.quit()
     quit()
 
