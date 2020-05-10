@@ -1,5 +1,10 @@
 # Flappy Bird
 
+### Demo
+
+![](demo.gif)
+
+
 ### Description
 
 This is a very simple implementation of flappy bird using pygame. Basic features include
