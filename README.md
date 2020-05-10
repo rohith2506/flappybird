@@ -1,8 +1,9 @@
 # Flappy Bird
 
 ### Demo
-
-![](demo.gif)
+<p align="center">  
+<img src="demo.gif">
+</p>
 
 
 ### Description
